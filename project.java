@@ -381,3 +381,379 @@ class DistanceUtil {
   }
 
 }
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.widget.Toast;
+class Utils 
+{
+  public static void showToastMessage(Context ctx, String msg, int duration )
+  {
+    CharSequence text = msg;
+        if (duration == -1)
+        {
+          duration = Toast.LENGTH_SHORT;
+        }         
+        Toast toast = Toast.makeText(ctx, text, duration);
+        toast.show();
+  }
+  
+  public static void showToastMessage(Context ctx, String msg)
+  {
+    showToastMessage(ctx, msg, -1);
+  }
+  
+    public static boolean isConnectedToInternet(Context c) {
+      ConnectivityManager cm = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
+      NetworkInfo ni = cm.getActiveNetworkInfo(); 
+      return (ni != null)&&(ni.isConnected());
+   }   
+}
+package app.test;
+
+import android.app.Activity;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.os.Bundle;
+import android.util.Log;
+
+public class MainActivity extends Activity {
+  private int mAudioBufferSize;
+  private int mAudioBufferSampleSize;
+  private AudioRecord mAudioRecord;
+  private boolean inRecordMode = false;
+
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    initAudioRecord();
+  }
+  @Override
+  public void onResume() {
+    super.onResume();
+    inRecordMode = true;
+    Thread t = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        getSamples();
+      }
+    });
+    t.start();
+  }
+
+  protected void onPause() {
+    inRecordMode = false;
+    super.onPause();
+  }
+  @Override
+  protected void onDestroy() {
+    if(mAudioRecord != null) {
+      mAudioRecord.release();
+    }
+    super.onDestroy();
+  }
+
+  private void initAudioRecord() {
+    try {
+      int sampleRate = 8000;
+      int channelConfig = AudioFormat.CHANNEL_IN_MONO;
+      int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
+      mAudioBufferSize = 2 * AudioRecord.getMinBufferSize(sampleRate,
+          channelConfig, audioFormat);
+      mAudioBufferSampleSize = mAudioBufferSize / 2;
+      mAudioRecord = new AudioRecord(
+          MediaRecorder.AudioSource.MIC,
+          sampleRate,
+          channelConfig,
+          audioFormat,
+          mAudioBufferSize);
+    } catch (IllegalArgumentException e) {
+      e.printStackTrace();
+    }
+    
+    int audioRecordState = mAudioRecord.getState();
+    if(audioRecordState != AudioRecord.STATE_INITIALIZED) {
+      finish();
+    }
+  }
+    
+  private void getSamples() {
+    if(mAudioRecord == null) return;
+
+    short[] audioBuffer = new short[mAudioBufferSampleSize];
+
+    mAudioRecord.startRecording();
+
+    int audioRecordingState = mAudioRecord.getRecordingState();
+    if(audioRecordingState != AudioRecord.RECORDSTATE_RECORDING) {
+      finish();
+    }
+    while(inRecordMode) {
+        int samplesRead = mAudioRecord.read(audioBuffer, 0, mAudioBufferSampleSize);
+    }
+    mAudioRecord.stop();
+  }
+}
+package app.test;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
+import android.provider.Settings;
+
+public class Test extends Activity implements SensorEventListener {
+    private WakeLock mWakelock;
+    private PowerManager mPwrMgr;
+    private WakeLock mTurnBackOn = null;
+    Handler handler = new Handler();
+  private SensorManager mMgr;
+    private Sensor mAccel;
+    private BufferedWriter mLog;
+  final private SimpleDateFormat mTimeFormat = new SimpleDateFormat("HH:mm:ss - ");
+  private int mSavedTimeout;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.main);
+        mMgr = (SensorManager) this.getSystemService(SENSOR_SERVICE);
+        mAccel = mMgr.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        try {
+            String filename = Environment.getExternalStorageDirectory().getAbsolutePath() +
+            "/accel.log";
+            mLog = new BufferedWriter(new FileWriter(filename, true));
+        }
+        catch(Exception e) {
+          e.printStackTrace();
+          finish();
+        }
+        mPwrMgr = (PowerManager) this.getSystemService(POWER_SERVICE);
+        mWakelock = mPwrMgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Accel");
+        mWakelock.acquire();
+        try {
+          mSavedTimeout = Settings.System.getInt(getContentResolver(), 
+              Settings.System.SCREEN_OFF_TIMEOUT);
+        }
+        catch(Exception e) {
+          mSavedTimeout = 120000;  // 2 minutes
+        }
+        Settings.System.putInt(getContentResolver(), 
+            Settings.System.SCREEN_OFF_TIMEOUT, -1);  // always on
+    }
+
+    public BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                handler.post(new Runnable() {
+          public void run() {
+            if(mTurnBackOn != null)
+              mTurnBackOn.release();
+                    mTurnBackOn = mPwrMgr.newWakeLock(
+                            PowerManager.SCREEN_DIM_WAKE_LOCK |
+                                    PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                            "AccelOn");
+                    mTurnBackOn.acquire();
+          }});
+            }
+        }
+    };
+
+    @Override
+    protected void onStart() {
+        mMgr.registerListener(this, mAccel, SensorManager.SENSOR_DELAY_NORMAL);
+        IntentFilter filter = new IntentFilter(Intent.ACTION_SCREEN_OFF);
+        registerReceiver(mReceiver, filter);
+      super.onStart();
+    }
+
+    @Override
+    protected void onStop() {
+        mMgr.unregisterListener(this, mAccel);
+        unregisterReceiver(mReceiver);
+        try {
+      mLog.flush();
+    } catch (IOException e) {
+    }
+      super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+      try {
+          mLog.flush();
+          mLog.close();
+      }
+      catch(Exception e) {
+      }
+        Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_OFF_TIMEOUT, mSavedTimeout);
+        mWakelock.release();
+        if(mTurnBackOn != null)
+            mTurnBackOn.release();
+        super.onDestroy();
+    }
+  public void onAccuracyChanged(Sensor sensor, int accuracy) {
+  }
+  public void onSensorChanged(SensorEvent event) {
+    writeLog("Got a sensor event: " + event.values[0] + ", " +
+        event.values[1] + ", " + event.values[2]);
+  }
+  private void writeLog(String str) {
+    try {
+        Date now = new Date();
+        mLog.write(mTimeFormat.format(now));
+      mLog.write(str);
+      mLog.write("\n");
+    }
+    catch(IOException ioe) {
+      ioe.printStackTrace();
+    }
+  }
+}
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.params.ClientPNames;
+import org.apache.http.client.params.CookiePolicy;
+import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.conn.scheme.PlainSocketFactory;
+import org.apache.http.conn.scheme.Scheme;
+import org.apache.http.conn.scheme.SchemeRegistry;
+import org.apache.http.conn.ssl.SSLSocketFactory;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
+
+/**
+ * Type comments here.
+ * 
+ * @author Xiujun Ma <maxj@adv.emcom.jp>
+ * @version Jul 31, 2010
+ */
+class OauthWebConfirm {
+  private static HttpClient httpClient = new CHttpClient();
+  public static String email = "";
+  public static String pwd = "";
+
+  public static void confirm(String url) {
+    httpClient.getParams().setParameter(ClientPNames.COOKIE_POLICY, CookiePolicy.BROWSER_COMPATIBILITY);
+    try {
+
+      // login
+      HttpPost loginpost = new HttpPost("http://www.douban.com/login");
+
+      String loginentity = "redir=&form_email=" + URLEncoder.encode(email, "UTF-8") + "&form_password=" + URLEncoder.encode(pwd, "UTF-8") +"&remember=on&user_login=%E8%BF%9B%E5%85%A5";
+
+      StringEntity reqEntity = new StringEntity(loginentity);
+      reqEntity.setContentType("application/x-www-form-urlencoded");
+      loginpost.setEntity(reqEntity);
+      loginpost.setHeader("User-Agent", "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9.2.8) Gecko/20100722 Firefox/3.6.8");
+      httpClient.execute(loginpost);
+      
+      // agree page
+      HttpGet get = new HttpGet(url);
+      get.setHeader("User-Agent", "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9.2.8) Gecko/20100722 Firefox/3.6.8");
+      HttpResponse res2 = httpClient.execute(get);
+      String restring2 = convertStreamToString(res2.getEntity().getContent());
+
+      // agree action
+      HttpPost agreepost = new HttpPost(url);
+      
+      StringBuilder stringBuilder = new StringBuilder();
+
+      stringBuilder.append("oauth_token=").append(getFromValue(restring2, "oauth_token"));
+      stringBuilder.append("&oauth_callback=").append(getFromValue(restring2, "oauth_callback"));
+      stringBuilder.append("&ssid=").append(getFromValue(restring2, "ssid"));
+      stringBuilder.append("&confirm=").append(getFromValue(restring2, "confirm"));
+
+      StringEntity agreeEntity = new StringEntity(stringBuilder.toString());
+      agreeEntity.setContentType("application/x-www-form-urlencoded");
+      agreepost.setEntity(agreeEntity);
+      agreepost.setHeader("User-Agent", "Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN; rv:1.9.2.8) Gecko/20100722 Firefox/3.6.8");
+      httpClient.execute(agreepost);
+      // HttpResponse res3 = httpClient.execute(agreepost);
+      
+      // String restring3 = convertStreamToString(res3.getEntity().getContent());
+      
+    } catch (ClientProtocolException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public static String convertStreamToString(InputStream is) throws IOException {
+    if (is != null) {
+      StringBuilder sb = new StringBuilder();
+      String line;
+
+      try {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+        while ((line = reader.readLine()) != null) {
+          sb.append(line).append("\n");
+        }
+      } finally {
+        is.close();
+      }
+      return sb.toString();
+    } else {
+      return "";
+    }
+  }
+  
+  public static String getFromValue(String html, String name) {
+    
+    Pattern p = Pattern.compile("name=\\\"" + name + "\\\" value=\\\".+\\\"");
+    Matcher m = p.matcher(html);
+    String ex = "";
+    if(m.find()) ex = m.group(0);
+    else return "";
+    String value = "";
+        try {
+          value = URLEncoder.encode(ex.split("value=\"")[1].replace("\"", ""), "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+          e.printStackTrace();
+        }
+    return value;
+  }
+}
+
+
+
+class CHttpClient extends DefaultHttpClient {
+  @Override
+  protected ClientConnectionManager createClientConnectionManager() {
+    SchemeRegistry registry = new SchemeRegistry();
+    registry.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
+    registry.register(new Scheme("https", SSLSocketFactory.getSocketFactory(), 443));
+    
+    return new ThreadSafeClientConnManager(this.getParams(), registry);
+  }
+}
+
