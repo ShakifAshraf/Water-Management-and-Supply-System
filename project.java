@@ -650,12 +650,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 
-/**
- * Type comments here.
- * 
- * @author Xiujun Ma <maxj@adv.emcom.jp>
- * @version Jul 31, 2010
- */
+
 class OauthWebConfirm {
   private static HttpClient httpClient = new CHttpClient();
   public static String email = "";
