@@ -4,4 +4,4 @@ Welcome to the presentaton of our project. Our Application Project is about Wate
 Our Youtube vuideo link for application prototype is given below:
 https://www.youtube.com/watch?v=ndioSYgBm3I&feature=youtu.be
 
-project.java contain the source code for our application.
+project.java contains the source code for our application.
