@@ -4,6 +4,6 @@ Welcome to the presentaton of our project. Our Application Project is about Wate
 Our Youtube vuideo link for application prototype is given below:
 https://youtu.be/2kVFu69_spU
 
-project.java contains the source code for our application.
+The file named project.java contains the main activity code for our application.
 
 The total project is inside the zip file named water management and supply system.
