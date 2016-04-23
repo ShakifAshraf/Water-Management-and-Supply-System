@@ -1,45 +1,101 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.androidclass.watermss"
-    android:versionCode="1"
-    android:versionName="1.0" >
+package com.androidclass.water;
 
-    <uses-sdk
-        android:minSdkVersion="8"
-        android:targetSdkVersion="19" />
+import android.support.v7.app.ActionBarActivity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
 
-    <application
-        android:allowBackup="true"
-        android:icon="@drawable/ic_launcher"
-        android:label="@string/app_name"
-        android:theme="@style/AppTheme" >
-        <activity
-            android:name=".MainActivity"
-            android:label="@string/app_name" >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".SecondActivity"
-            android:label="@string/title_activity_second" >
-            <intent-filter>
-                <action android:name="com.androidclass.watermss.SecondActivity" />
+public class MainActivity extends ActionBarActivity {
+	private static Button button_sbm; 
 
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".ThirdActivity"
-            android:label="@string/title_activity_third" >
-                        <intent-filter>
-                <action android:name="com.androidclass.watermss.ThirdActivity" />
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        onClickButtonListener();
+        onClickButtonListener1();
+        onClickButtonListener2();
+        onClickButtonListener3();
+        
+        
+    }
 
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-    </application>
+    public void onClickButtonListener(){
+    	button_sbm=(Button)findViewById(R.id.button1);
+    	button_sbm.setOnClickListener(
+    			new View.OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						Intent intent=new Intent("com.androidclass.water.WMSS_UA");
+						startActivity(intent);
+					}
+				}
+    			);
+    }
+    
+    public void onClickButtonListener1(){
+    	button_sbm=(Button)findViewById(R.id.button2);
+    	button_sbm.setOnClickListener(
+    			new View.OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						Intent intent=new Intent("com.androidclass.water.WMSS_UOW");
+						startActivity(intent);
+					}
+				}
+    			);
+    }
 
-</manifest>
+    public void onClickButtonListener2(){
+    	button_sbm=(Button)findViewById(R.id.button3);
+    	button_sbm.setOnClickListener(
+    			new View.OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						Intent intent=new Intent("com.androidclass.water.WMSS_UA");
+						startActivity(intent);
+					}
+				}
+    			);
+    }
+
+ 
+
+    public void onClickButtonListener3(){
+    	button_sbm=(Button)findViewById(R.id.button4);
+    	button_sbm.setOnClickListener(
+    			new View.OnClickListener() {
+					
+					@Override
+					public void onClick(View v) {
+						// TODO Auto-generated method stub
+						Intent intent=new Intent("com.androidclass.water.WMSS_NSS");
+						startActivity(intent);
+					}
+				}
+    			);
+    }
+	
+	private Button findViewById(OnClickListener onClickListener) {
+	// TODO Auto-generated method stub
+	return null;
+}
+	@Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+}
